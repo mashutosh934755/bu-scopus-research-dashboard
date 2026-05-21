@@ -6,19 +6,20 @@
 
 ## Overview
 
-**BU Scopus Research Dashboard** is a WordPress-based research analytics dashboard developed for academic libraries to visualize institutional research output using Scopus, DSpace/Institutional Repository, Web of Science manual metrics, SDG mapping, subject analytics, country collaboration, and interactive publication details.
+**BU Scopus Research Dashboard** is a WordPress-based research analytics dashboard developed for academic libraries to visualize institutional research output using Scopus, Web of Science, DSpace/Institutional Repository, SDG mapping, subject analytics, country collaboration, and interactive publication details.
 
 The dashboard is designed to support academic libraries, research cells, and institutional administrators in monitoring, presenting, and analyzing research publications and scholarly output through a centralized web-based interface.
 
 ## Purpose
 
-The main purpose of this plugin is to provide a library-managed research analytics system that can display institutional research performance in a simple, interactive, and visually informative format.
+The main purpose of this plugin is to provide a library-managed research analytics system that displays institutional research performance in a simple, interactive, and visually informative format.
 
-It combines API-based data, repository records, manually curated indicators, and visual analytics into a single WordPress dashboard.
+It combines API-based research data, institutional repository records, bibliometric indicators, and visual analytics into a single WordPress dashboard.
 
 ## Key Features
 
 - Scopus publication analytics
+- Web of Science research indicators
 - WordPress admin dashboard
 - Public shortcode-based dashboard
 - KPI cards for research indicators
@@ -30,7 +31,6 @@ It combines API-based data, repository records, manually curated indicators, and
 - SDG goal mapping
 - Country-wise collaboration map
 - DSpace/Institutional Repository thesis integration
-- Manual Web of Science metrics
 - AJAX-based popup publication details
 - CSV export functionality
 - Cache-based dashboard loading
