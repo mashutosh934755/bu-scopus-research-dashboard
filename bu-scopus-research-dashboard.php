@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: BU Scopus Research Dashboard
- * Description: Scopus dashboard for Bennett University with admin tools, public shortcode view, clickable charts, horizontal subject graph, world map, popup details, CSV export, SDG and WOS sections, and safe filtering of Erratum / Retracted / Preprint records.
- * Version: 4.6.0
+ * Description: Scopus dashboard for Bennett University with admin tools, public shortcode view, clickable charts, horizontal subject graph, world map, popup details, CSV export, SDG and WOS sections, OJS OAI settings, and safe filtering of Erratum / Retracted / Preprint records.
+ * Version: 4.6.1
  * Author: Ashutosh Mishra
  * Text Domain: bu-scopus-research-dashboard
  */
@@ -149,6 +149,39 @@ final class BU_Scopus_Research_Dashboard {
         }
 
         add_settings_section(
+            'bu_scopus_rd_ojs',
+            __('OJS API Settings', 'bu-scopus-research-dashboard'),
+            function () {
+                echo '<p class="description">' . esc_html__('OJS OAI endpoint aur journal site URL yahan set karo.', 'bu-scopus-research-dashboard') . '</p>';
+            },
+            'bu-scopus-rd-settings'
+        );
+
+        $ojs_fields = array(
+            array('ojs_oai_base_url', __('OAI Base URL', 'bu-scopus-research-dashboard'), 'url', 'https://journals.bennett.edu.in/index.php/index/oai', __('OAI-PMH base URL', 'bu-scopus-research-dashboard')),
+            array('ojs_journal_site_url', __('Journal Site URL', 'bu-scopus-research-dashboard'), 'url', 'https://journals.bennett.edu.in/', __('Main journal site URL', 'bu-scopus-research-dashboard')),
+            array('ojs_timeout', __('Request Timeout (seconds)', 'bu-scopus-research-dashboard'), 'number', '20', __('HTTP timeout for OJS OAI-PMH requests.', 'bu-scopus-research-dashboard')),
+            array('ojs_cache_ttl', __('Cache TTL (seconds)', 'bu-scopus-research-dashboard'), 'number', '600', __('How long OJS data should stay cached.', 'bu-scopus-research-dashboard')),
+            array('ojs_verify_ssl', __('Verify SSL', 'bu-scopus-research-dashboard'), 'checkbox', '', __('Enable SSL certificate verification for OJS requests.', 'bu-scopus-research-dashboard')),
+        );
+
+        foreach ($ojs_fields as $f) {
+            add_settings_field(
+                $f[0],
+                $f[1],
+                array($this, 'render_field'),
+                'bu-scopus-rd-settings',
+                'bu_scopus_rd_ojs',
+                array(
+                    'key'         => $f[0],
+                    'type'        => $f[2],
+                    'placeholder' => $f[3],
+                    'help'        => $f[4],
+                )
+            );
+        }
+
+        add_settings_section(
             'bu_scopus_rd_dspace',
             __('DSpace API Settings', 'bu-scopus-research-dashboard'),
             function () {
@@ -197,6 +230,13 @@ final class BU_Scopus_Research_Dashboard {
             'manual_csv'                 => isset($input['manual_csv']) ? sanitize_text_field($input['manual_csv']) : $defaults['manual_csv'],
             'dashboard_auto_refresh_minutes' => isset($input['dashboard_auto_refresh_minutes']) ? max(0, (int) $input['dashboard_auto_refresh_minutes']) : $defaults['dashboard_auto_refresh_minutes'],
             'recent_publications_limit'  => isset($input['recent_publications_limit']) ? max(0, (int) $input['recent_publications_limit']) : $defaults['recent_publications_limit'],
+
+            'ojs_oai_base_url'           => isset($input['ojs_oai_base_url']) ? esc_url_raw(trim((string) $input['ojs_oai_base_url'])) : $defaults['ojs_oai_base_url'],
+            'ojs_journal_site_url'       => isset($input['ojs_journal_site_url']) ? esc_url_raw(trim((string) $input['ojs_journal_site_url'])) : $defaults['ojs_journal_site_url'],
+            'ojs_timeout'                => isset($input['ojs_timeout']) ? max(5, (int) $input['ojs_timeout']) : $defaults['ojs_timeout'],
+            'ojs_cache_ttl'              => isset($input['ojs_cache_ttl']) ? max(60, (int) $input['ojs_cache_ttl']) : $defaults['ojs_cache_ttl'],
+            'ojs_verify_ssl'             => !empty($input['ojs_verify_ssl']) ? 1 : 0,
+
             'dspace_repo_url'            => isset($input['dspace_repo_url']) ? esc_url_raw(trim((string) $input['dspace_repo_url'])) : $defaults['dspace_repo_url'],
             'dspace_api_base'            => isset($input['dspace_api_base']) ? esc_url_raw(trim((string) $input['dspace_api_base'])) : $defaults['dspace_api_base'],
             'dspace_timeout'             => isset($input['dspace_timeout']) ? max(5, (int) $input['dspace_timeout']) : $defaults['dspace_timeout'],
@@ -245,6 +285,13 @@ final class BU_Scopus_Research_Dashboard {
             'manual_csv'                 => 'custom_metrics.csv',
             'dashboard_auto_refresh_minutes' => 0,
             'recent_publications_limit'  => 6,
+
+            'ojs_oai_base_url'           => 'https://journals.bennett.edu.in/index.php/index/oai',
+            'ojs_journal_site_url'       => 'https://journals.bennett.edu.in/',
+            'ojs_timeout'                => 20,
+            'ojs_cache_ttl'              => 600,
+            'ojs_verify_ssl'             => 1,
+
             'dspace_repo_url'            => 'https://lrcdrs.bennett.edu.in',
             'dspace_api_base'            => 'https://lrcdrs.bennett.edu.in/server/api',
             'dspace_timeout'             => 20,
@@ -258,6 +305,78 @@ final class BU_Scopus_Research_Dashboard {
         $saved = get_option(self::OPT_SETTINGS, array());
         return wp_parse_args(is_array($saved) ? $saved : array(), $defaults);
     }
+
+    private function get_ojs_oai_url($verb = 'Identify', $extra_args = array()) {
+        $settings = $this->get_settings();
+
+        $base = isset($settings['ojs_oai_base_url']) ? trim((string) $settings['ojs_oai_base_url']) : '';
+        if ($base === '') {
+            $base = 'https://journals.bennett.edu.in/index.php/index/oai';
+        }
+
+        $args = array_merge(array(
+            'verb' => $verb,
+        ), is_array($extra_args) ? $extra_args : array());
+
+        return add_query_arg($args, $base);
+    }
+
+    private function fetch_ojs_oai_xml($verb = 'Identify', $extra_args = array()) {
+        $settings = $this->get_settings();
+        $url      = $this->get_ojs_oai_url($verb, $extra_args);
+
+        $response = wp_remote_get($url, array(
+            'timeout'   => max(5, (int) ($settings['ojs_timeout'] ?? 20)),
+            'sslverify' => !empty($settings['ojs_verify_ssl']),
+            'headers'   => array(
+                'Accept' => 'application/xml,text/xml,*/*',
+            ),
+        ));
+
+        if (is_wp_error($response)) {
+            return array(
+                'ok'      => false,
+                'message' => $response->get_error_message(),
+                'url'     => $url,
+            );
+        }
+
+        $code = (int) wp_remote_retrieve_response_code($response);
+        $body = (string) wp_remote_retrieve_body($response);
+
+        if ($code < 200 || $code >= 300 || trim($body) === '') {
+            return array(
+                'ok'      => false,
+                'message' => 'OJS OAI request failed. HTTP Code: ' . $code,
+                'url'     => $url,
+                'body'    => $body,
+            );
+        }
+
+        return array(
+            'ok'   => true,
+            'url'  => $url,
+            'xml'  => $body,
+            'code' => $code,
+        );
+    }
+
+    private function get_ojs_identify_cached() {
+        $settings = $this->get_settings();
+        $ttl      = max(60, (int) ($settings['ojs_cache_ttl'] ?? 600));
+        $cache_key = 'bu_scopus_rd_ojs_identify';
+
+        $cached = get_transient($cache_key);
+        if (is_array($cached)) {
+            return $cached;
+        }
+
+        $data = $this->fetch_ojs_oai_xml('Identify');
+        set_transient($cache_key, $data, $ttl);
+
+        return $data;
+    }
+
 
 
     public function enqueue_assets($hook) {
