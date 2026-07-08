@@ -1,9 +1,5 @@
 # BU Scopus Research Dashboard
 
-> **Copyright Notice:**  
-> This repository is shared only for academic viewing, research reference, and demonstration purposes.  
-> Copying, modifying, reusing, redistributing, sublicensing, selling, or commercial use of this code is not permitted without prior written permission from the author.
-
 ## Overview
 
 **BU Scopus Research Dashboard** is a web-based research analytics system developed for academic libraries to visualize institutional research output, bibliometric indicators, repository records, SDG mapping, subject analytics, country collaboration, and interactive publication details.
@@ -98,3 +94,4 @@ The repository can be cited in research papers as a source code reference for th
 
 ```text
 Mishra, A. (2026). BU Scopus Research Dashboard [Source code]. GitHub. https://github.com/mashutosh934755/bu-scopus-research-dashboard
+```
